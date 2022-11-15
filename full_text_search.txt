@@ -1,0 +1,16 @@
+
+
+SELECT id, title FROM articles WHERE
+  make_tsvector(title, content) @@ to_tsquery('bjarne <-> stroustrup');
+
+
+____________________________________________________________________________________
+
+SELECT id, ts_headline(title, q) FROM articles,
+    to_tsquery('bjarne <-> stroustrup') AS q
+  WHERE make_tsvector(title, content) @@ q;
+
+_______________________________________________________________________________
+
+SELECT * FROM product
+WHERE to_tsvector(name) @@ to_tsquery('Awesome');

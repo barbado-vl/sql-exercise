@@ -1,0 +1,23 @@
+
+_________________________________________MEDIAN_________________________________________________________________
+
+Для этой задачи вам нужно создать простую инструкцию SELECT. Ваша задача состоит в том, чтобы рассчитать МИН., МЕДИАНУ и МАКС. баллы учащихся из таблицы результатов.
+Две таблицы Студенты и их Результаты.
+
+Решение -- PERCENTILE_CONT
+SELECT
+   MIN(score) as min,
+   
+   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY score) AS median,  
+
+   MAX(score) as max
+FROM score_all
+
+----------------------------------------------------------------
+
+SELECT MIN(score) as min, 
+       CAST( (SELECT score FROM result ORDER BY score 
+             LIMIT 1 
+             OFFSET FLOOR((SELECT COUNT(*) FROM result)) / 2) as FLOAT ) as median,
+       MAX(score) as max 
+FROM result

@@ -1,0 +1,43 @@
+codewars не принимает внутренних конструкций... не принял DECLARE, цикл WHILE
+
+__________________________________________________________________________________________________________
+CREATE FUNCTION increment(x int)
+    RETURNS int AS
+    $$ SELECT x + 1; $$
+    LANGUAGE SQL;
+
+CREATE FUNCTION increment(i integer) RETURNS integer
+AS 'select $1 + 1;'
+LANGUAGE sql;
+
+CREATE FUNCTION increment(@age INT) {
+returns INT as
+Begin return @age + 1; end;
+
+
+CREATE OR REPLACE FUNCTION increment(i integer) RETURNS integer
+AS $$ BEGIN RETURN i + 1; END; $$
+LANGUAGE plpgsql;
+
+__________________________________________________________________________________________________________
+
+CREATE OR REPLACE FUNCTION greeting_func (t1 text) RETURNS text AS $$
+  SELECT * FROM FORMAT('Hello, %s how are you doing today?', t1);
+$$ LANGUAGE SQL;
+
+SELECT greeting_func(name) AS greeting
+FROM person
+
+____________________________________________________________________________________________________________
+
+CREATE FUNCTION agecalculator(age DATE) RETURNS INTEGER AS $$
+BEGIN
+    return date_part('year', AGE(age));
+END 
+$$ LANGUAGE plpgsql;
+
+
+
+
+
+

@@ -1,0 +1,68 @@
+___________________________________________________________________________________________REPEAT / REVERSE
+Решение
+SELECT
+    REPEAT ( name, 3) as name,
+    REVERSE ( characteristics ) as characteristics
+FROM monsters;
+
+_______________________________________________________________________________________________ COUNT
+
+Решение -- COUNT -- вта функция возвращает количество элементов, найденных в группе COUNT ( { [ [ ALL | DISTINCT ] expression ] | * } )  .
+SELECT
+    COUNT (name) as products,
+    country
+FROM products AS results
+WHERE country IN ('United States of America', 'Canada')
+GROUP BY country
+ORDER BY products DESC
+
+_______________________________________________________________________________________________ COALESCE / NULLIF
+
+Решение -- COALESCE -- вычисляет аргументы по порядку и возвращает текущее значение первого выражения, изначально не вычисленного как NULL.
+        -- NULLIF -- возвращает значение NULL, если два указанных выражения равны.
+SELECT id,
+    COALESCE(NULLIF(name, ''), '[product name not found]') AS name,
+    price,
+    COALESCE(NULLIF(card_name, ''), '[card name not found]') AS card_name,
+    card_number,
+    transaction_date
+FROM eusales AS resultant
+WHERE price > 50
+
+_________________________________________________________________________________________________ ROW_NUMBER / RANK
+Учитывая схему, представленную ниже, напишите запрос, который использует оконную функцию, которая возвращает два наиболее просматриваемых сообщения для каждой категории.
+Задача -- из таблиы posta убрать все, кроме 2-х с максимальным vviews для каждой категории из таблицы categories.
+
+Решение -- ROW_NUMBER -- как работает, читать в комментарии ниже.
+select
+  c.id category_id,
+  c.category,
+  p.title,
+  p.views,
+  p.post_id
+from categories c left join (                                              -- перебираем таблицу post, чтобы определить первых 2 в каждой категории
+  select
+    category_id,
+    title,
+    views,
+    id post_id,
+    row_number() over (partition by category_id order by views desc, id) rn -- даем № строк по колонке views и id для каждой секции определенной по category_id
+  from posts) p 
+on p.category_id = c.id 
+where p.rn < 3                                                               -- условие отбора -- возьмем первые 2
+order by category, views desc, post_id
+
+--------------------------------------------------------------------------------------- RANK
+Для этой задачи вам нужно создать простую инструкцию SELECT, которая вернет все столбцы из таблицы людей, и присоединиться к таблице продаж, чтобы вы могли вернуть СЧЁТ всех продаж и ранжировать каждого человека по их количеству продаж.
+Вы должны вернуть все поля людей, а также количество продаж как «sale_count» и рейтинг как «sale_rank».
+
+SELECT
+    p.id,
+    p.name,
+    s.sale_count,
+    RANK() OVER ( ORDER BY s.sale_count DESC) as sale_rank
+FROM people as p
+JOIN ( SELECT people_id, COUNT(id) as sale_count FROM sales GROUP BY people_id ) as s
+ON p.id = s.people_id
+
+

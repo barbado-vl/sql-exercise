@@ -1,0 +1,5 @@
+You received an invitation to an amazing party. Now you need to write an insert statement to add yourself to the table of participants.
+participants table schema: name (string), age (integer), attending (boolean)
+
+Решение 1 (мое такое же)
+INSERT into participants (name, age, attending) values ('Greg', 21, true);

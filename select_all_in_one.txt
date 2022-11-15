@@ -1,0 +1,97 @@
+SELECT столбцы
+FROM таблица
+[WHERE условие_фильтрации_строк]
+[GROUP BY столбцы_для_группировки]
+[HAVING условие_фильтрации_групп]
+[ORDER BY столбцы_для_сортировки]
+________________________________________________________________________________________________________
+Тимми работает в компании, занимающейся статистическим анализом, и ему было поручено подсчитать количество продаж в определенный день, сгруппированное по названию каждого отдела, а затем по дням.
+
+SELECT 
+  DATE(s.transaction_date) as day,
+  d.name as department,
+  COUNT(s.id) as sale_count
+  FROM department d
+  JOIN sale s on d.id = s.department_id
+  GROUP BY day, department
+  ORDER BY day asc, name asc
+
+
+
+
+________________________________________________________________________________________________________
+
+Решение 
+SELECT
+    COUNT (name) as products,
+    country
+FROM products AS results
+WHERE country IN ('United States of America', 'Canada')  -- фильтруем страны
+GROUP BY country                                         -- сводим по странам 
+ORDER BY products DESC                                   -- сортируем по убыванию по колонке продуктов
+_________________________________________________________________________________________________________
+
+SELECT
+    race,
+    COUNT(name) as count
+FROM demographics
+GROUP BY race         -- сводим по рассам
+ORDER BY count DESC;
+
+________________________________________________________________________________________________________
+
+Решение 1 
+SELECT
+    RANK () OVER (ORDER BY SUM(points) DESC) AS rank,                                   -- новое поле, функция RANK
+    CASE WHEN clan = null or clan ='' THEN '[no clan specified]' ELSE clan END AS clan, -- альтернатива COALESCE(NULLIF(clan,''), '[no clan specified]') AS clan,
+    SUM ( points ) AS total_points,
+    COUNT ( name ) AS total_people
+FROM people
+GROUP BY clan                                                                           -- сводим по клан                                                     
+ORDER BY total_points DESC                                                              -- сортируем по тотал поинт (то же что rank, но его нельзя т.к. поле новое), убыв
+
+Решение 2 -- с вложеным запросом
+SELECT RANK() OVER(ORDER BY r.total_points DESC) AS rank, r.*
+FROM (
+  SELECT
+    COALESCE(NULLIF(p.clan,''), '[no clan specified]') AS clan,
+    SUM(p.points) AS total_points,
+    COUNT(p.name) AS total_people
+  FROM people p
+  GROUP BY p.clan ) r;
+
+
+____________________________________________________________________________________________________________________
+
+SELECT p.name,
+  count(case when d.detail = 'good' then 1 end) as good,
+  count(case when d.detail = 'ok'  then 1 end) as ok, 
+  count(case when d.detail = 'bad' then 1 end) as bad
+FROM products p
+INNER JOIN details d ON p.id = d.product_id
+GROUP BY p.name
+ORDER BY p.name
+
+_______________________________________________________________________________________________________________________
+
+SELECT
+    th.id, th.heads, bh.legs, th.arms, bh.tails,
+    CASE WHEN th.heads > th.arms OR bh.tails > bh.legs THEN 'BEAST'
+         ELSE 'WEIRDO'
+         END AS species
+FROM top_half as th
+JOIN bottom_half as bh ON th.id = bh.id
+ORDER BY species
+
+________________________________________________________________________________________________________________________
+Тимми должен отобразить каждую уникальную работу, общую среднюю зарплату, общее количество людей и общую зарплату и упорядочить по самой высокой средней зарплате. У Тимми есть несколько ошибок в запросе, помогите Тимми исправить его запрос, чтобы он мог сохранить свою работу!
+
+
+SELECT 
+  j.job_title,
+  (ROUND( SUM(j.salary) / COUNT(j.people_id), 2))::float as average_salary,
+  COUNT(j.people_id) as total_people,
+  (ROUND( SUM(j.salary), 2))::float as total_salary
+  FROM job j
+  GROUP BY j.job_title
+  ORDER BY average_salary DESC

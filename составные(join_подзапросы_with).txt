@@ -1,0 +1,189 @@
+
+
+
+
+
+
+
+__________________________________________________________________________________________________________
+
+SELECT id, name
+FROM departments
+WHERE id IN (   
+  SELECT department_id
+  FROM sales
+  WHERE price > 98.00
+)
+--------------------------------------- через EXISTS
+SELECT id, name
+FROM departments
+WHERE EXISTS (   
+  SELECT price
+  FROM sales
+  WHERE price >= 98.00 and departments.id = sales.department_id
+)
+__________________________________________________________________________________________________________
+
+Для этой задачи вам нужно создать оператор SELECT, этот оператор SELECT будет использовать IN, чтобы проверить, была ли в отделе продажа с ценой более 98,00 долларов.
+Две таблицы -- Отделов и Продаж.
+
+Решение -- через подзапрос
+SELECT
+    id,
+    name
+FROM departments
+WHERE id IN ( SELECT department_id
+              FROM sales
+              WHERE price > 98 )
+
+Решение -- через подзапрос и обобщенное табличное выражение WITH
+WITH special_sales(department_id)
+AS
+(
+  SELECT department_id
+  FROM sales
+  WHERE price > 90
+)
+
+SELECT id, name
+FROM departments
+WHERE id IN ( SELECT id FROM special_sales);
+
+______________________________________________________________________________________________________________ CREATE VIEW
+
+For this challenge you need to create a VIEW. This VIEW is used by a sales store to give out vouches to members who have spent over $1000 in departments that have brought in more than $10000 total ordered by the members id. The VIEW must be called members_approved_for_voucher then you must create a SELECT query using the view.
+Данно -- 4 таблицы, 1 сводная sales и 3 отдельные.
+
+Решение
+CREATE VIEW members_approved_for_voucher AS
+SELECT m.id, m.name, m.email, SUM(p.price) AS total_spending
+FROM members m
+INNER JOIN sales s ON s.member_id = m.id          -- присоединяем таблицу sales, чтобы выйти на продукты
+INNER JOIN products p ON p.id = s.product_id      -- присоединяем таблицу products, чтобы выйти на цены продуктов
+WHERE s.department_id IN (                        -- условие по "departments that have brought in more than $10000 total ordered by the members id" 
+  SELECT s2.department_id
+  FROM sales s2
+  INNER JOIN products p2 ON p2.id = s2.product_id
+  GROUP BY s2.department_id
+  HAVING SUM(p2.price) > 10000
+)
+GROUP BY m.id, m.name, m.email
+HAVING SUM(p.price) > 1000                       -- условие members who have spent over $1000
+ORDER BY m.id;
+
+_________________________________________________________________________________________________________________ WITH RECURSIVE
+Для этой задачи вам нужно создать РЕКУРСИВНЫЙ иерархический запрос. У вас есть таблица сотрудников сотрудников, вы должны упорядочить каждого сотрудника по уровню. Вы должны использовать оператор WITH и назвать его employee_levels после того, как он был определен, вы должны выбрать из него.
+Уровень находится в соотношении, какой менеджер управляет сотрудником. например сотрудник с менеджером_идентификатором NULL находится на уровне 1, а затем непосредственные сотрудники с сотрудником на уровне 1 будут уровнем 2.
+
+Решение -- используется обобщенное табличное выражение (CTE Common Table Expression), где задается рекурсия WITH RECURSIVE. Синтаксис Рекурси -- цикл, где 1 запрос якорный, далее через UNION ALL добавляется запрос, который будет повторяться в цикле, пока не кончится условие.
+Условие WHERE [параметр] >= N -- задается ограничение числа проходов цикла.
+Условие JOIN -- связываете CTE и другую таблицу, число строк которой и будет ограничителем (пример эта задача)
+         
+
+WITH RECURSIVE employee_levels (level, id, first_name, last_name, manager_id) AS (
+   SELECT  
+       1, id, first_name, last_name, manager_id
+   FROM employees
+   WHERE manager_id is null                                       -- первый проход цикла с уссловием
+   UNION ALL
+   SELECT 
+       el.level + 1, e.id, e.first_name, e.last_name, e.manager_id
+   FROM employees as e                                     -- цикл проходит по таблицу каждый оборот
+   JOIN employee_levels as el ON el.id = e.manager_id      -- условие запускающие выполнение запроса цикла -- берем el.level для "el.level + 1", если el.id = e.manager_id
+)
+
+SELECT * FROM employee_levels
+
+----------------------------------------------------------------------------------
+Для этой задачи вам нужно создать простую инструкцию SELECT. Ваша задача состоит в том, чтобы рассчитать МИН., МЕДИАНУ и МАКС. баллы учащихся из таблицы результатов.
+Две таблицы Студенты и их Результаты.
+Рекурся нужна, чтобы перебрать студентов и достать по каждому их балл.
+
+WITH RECURSIVE score_all(score) AS
+(
+  SELECT score FROM result
+  WHERE score is null                 -- якорный проход цикла
+  UNION ALL
+  SELECT r.score FROM result as r     -- цикл по студентам
+  JOIN student as s ON s.id = r.student_id
+)
+
+SELECT
+   MIN(score) as min,
+   
+   PERCENTILE_CONT(0.5) WITHIN GROUP (ORDER BY score) AS median,
+
+   MAX(score) as max
+FROM score_all
+
+_______________________________________________________________________________________________  CROSSTAB
+Для этой задачи вам нужно PIVOT данные. У вас есть две таблицы, продукты и детали. Ваша задача состоит в том, чтобы повернуть строки в продуктах, чтобы создать таблицу продуктов, в которой есть строки с их деталями. Группировать и упорядочивать по названию Товара.
+
+Решение.
+CROSSTAB функция выполняющая анологичную задачу что PIVOT оператор. Для вызова функции нужно "REATE EXTENSION tablefunc;". В функцию ввиде текста передается запрос. Колонки запроса четко деляться по секциями: rowid -- колонка ключа, attribute -- будут взяты данные для поворота, value -- значения. ... ?? value колонок может быть много??
+Обязательно ORDER BY   ?? GROUP BY по колонкам??
+
+CREATE EXTENSION tablefunc;
+    
+SELECT * 
+FROM  crosstab(
+      'SELECT p.name, detail, COUNT(d.id)
+      FROM products p
+      JOIN details d
+      ON p.id = d.product_id
+      GROUP BY p.name, d.detail
+      ORDER BY 1,2')
+AS ct (name text, bad bigint, good bigint, ok bigint)
+
+___________________________________________________________________________________________________ LEFT / RIGHT JOIN
+Учитывая схему, представленную ниже, напишите запрос, который использует оконную функцию, которая возвращает два наиболее просматриваемых сообщения для каждой категории.
+Задача -- из таблиы posta убрать все, кроме 2-х с максимальным vviews для каждой категории из таблицы categories.
+
+Логика:
+ 1) определиться / получить первые 2 для каждой категории -- перебрать таблицу posts с использованем функций ROW_NUMBER или RANK в подзапросе или в cte.
+ 2) убрать не нужные -- условие по рангу или номеру строки полученному в "1"
+ 3) учесть null значения -- а) если под запрос, то делаем LEFT JOIN, чтобы оригинальная таблицы posts была главное
+                            б) если через WITH, то нулевые сами пройдут
+
+Решение -- операция LEFT JOIN -- создает левое внешнее соединение. С помощью левого внешнего соединения выбираются все записи первой (левой) таблицы, даже если они не соответствуют записям во второй (правой) таблице.
+select
+  c.id category_id,
+  c.category,
+  p.title,
+  p.views,
+  p.post_id
+from categories c left join (                                              -- перебираем таблицу post, чтобы определить первых 2 в каждой категории
+  select
+    category_id,
+    title,
+    views,
+    id post_id,
+    row_number() over (partition by category_id order by views desc, id) rn -- даем № строк по колонке views и id для каждой секции определенной по category_id
+  from posts) p 
+on p.category_id = c.id 
+where p.rn < 3                                                               -- условие отбора -- возьмем первые 2
+order by category, views desc, post_id
+
+Решение 2 -- WITH
+with scope1 as (
+select t1.id as category_id,t1.category,t2.title,t2.views,row_number() over(partition by t1.id,t1.category order by t2.views desc) as row_num,t2.id as post_id
+from categories t1 left join posts t2 on (t1.id = t2.category_id)
+)
+select scope1.category_id,scope1.category,scope1.title, scope1.views,scope1.post_id
+from scope1
+where scope1.row_num <= 2 
+order by scope1.category asc, scope1.views desc, scope1.post_id asc;
+
+---------------------------------------------------------------
+SELECT
+    p.id,
+    p.name,
+    s.sale_count,
+    RANK() OVER ( ORDER BY s.sale_count DESC) as sale_rank
+FROM people as p
+JOIN ( SELECT people_id, COUNT(id) as sale_count FROM sales GROUP BY people_id ) as s
+ON p.id = s.people_id
+
+
+
+

@@ -1,0 +1,93 @@
+Учитывая базу данных, в которой все данные пользователей хранятся в одной огромной строке XML, извлеките ее как отдельные строки и столбцы.
+Заметки
+   Частное поле определяет, должен ли адрес электронной почты пользователя быть общедоступным.
+   Если профиль закрытый, адрес электронной почты должен быть равен «Скрытый».
+   Пользователи могут иметь несколько адресов электронной почты
+   Если адреса электронной почты не указаны, адрес электронной почты должен быть равен «Нет».
+   Если адресов электронной почты несколько, должен отображаться первый из них.
+   Дата_рождения указана в формате гггг-мм-дд.
+   Поля возраста представляют возраст пользователя в годах.
+   Упорядочить результат по столбцам first_name и last_name
+Input table
+-------------------------
+| Table | Column | Type |
+|-------+--------+------|
+| users | id     | int  |
+|       | data   | xml  |
+-------------------------
+xml:
+<data>
+    <user>
+        <first_name>...</first_name>
+        <last_name>...</last_name>
+        <date_of_birth>...</date_of_birth>
+        <private>...</private>
+        <email_addresses>
+            <address>...</address>
+            <address>...</address>
+            ...
+            <address>...</address>
+        </email_addresses>
+    </user>
+    <user>...</user>
+    ...
+    <user>...</user>
+</data>
+
+output table:
+------------------------
+|    Column     | Type |
+|---------------+------|
+| first_name    | text |
+| last_name     | text |
+| age           | int  |
+| email_address | text |
+------------------------
+
+Решение 1
+SELECT 
+first_name, 
+last_name, 
+DATE_PART('year', AGE(date_of_birth))::integer as age,
+CASE
+    WHEN private = true THEN 'Hidden'
+    WHEN email IS NULL THEN 'None'
+    ELSE email
+    END as email_address
+FROM users x,                                                -- задаем источник (можно напрямую FROM XMLTABLE('/data/user'), далее 
+   XMLTABLE('/data/user'                                        открытие xml документа
+     PASSING x.data
+     COLUMNS                                                 -- разбиваем теги по колонка
+       first_name     VARCHAR(50)   PATH 'first_name',
+       last_name      VARCHAR(50)   PATH 'last_name',
+       date_of_birth  DATE          PATH 'date_of_birth',
+       private        BOOLEAN       PATH 'private',
+       email          TEXT          PATH 'email_addresses/address[1]'
+     ) xt
+order by first_name, last_name;
+
+
+Решение 2               есть вариант без unnest
+SELECT 
+  unnest(xpath('/user/first_name/text()', data2))::text as first_name,
+  unnest(xpath('/user/last_name/text()', data2))::text as last_name,
+  DATE_PART('year', AGE(TO_DATE(unnest(xpath('//date_of_birth/text()', data2))::text, 'yyyy-mm-dd')))::int as age,
+  CASE
+    WHEN xpath('/user/private/text()', data2)::text LIKE '%true%' THEN 'Hidden'
+    WHEN array_length(xpath('/user/email_addresses/*[1]/text()', data2), 1) is null THEN 'None'
+    else unnest(xpath('/user/email_addresses/*[1]/text()', data2))::text
+  END email_address
+FROM 
+  (select unnest(xpath('/data/user', data)) as data2 from users) t
+ORDER BY first_name, last_name
+
+
+
+
+
+
+
+
+
+
+

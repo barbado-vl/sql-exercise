@@ -1,0 +1,63 @@
+Примеры с CASE есть в "all in one" и в "составных"
+
+_______________________________________________________________________________________________________________
+Решение -- без типа
+SELECT
+   id, 
+   case when base % factor = 0 then true else false end res 
+FROM kata;
+
+Решение -- задаем тип
+select id,
+case
+  when base % factor = 0 then 'true'::boolean
+  else 'false'::boolean
+end as res from kata
+
+____________________________________________________________________________________________________________________
+Your classmates asked you to copy some paperwork for them. You know that there are 'n' classmates and the paperwork has 'm' pages.
+Your task is to calculate how many blank pages do you need. If n < 0 or m < 0 return 0.
+Example: n= 5, m=5: 25; n=-5, m=5:  0.
+Write your SQL statement here: you are given a table 'paperwork' with columns 'id', n' and 'm', return a table with columns 'n', 'm' and your result in a column named 'res'.
+
+Решение
+SELECT n, m, 
+   CASE WHEN n < 0 or m < 0 THEN 0 ELSE n * m END res
+FROM paperwork;
+___________________________________________________________________________________________________________________
+SELECT 
+  CASE
+   WHEN yr%100 = 0 THEN yr/100
+   WHEN yr%100 > 0 THEN yr/100+1
+  END 
+as century
+from years
+______________________________________________________________________________________________________________________
+
+Решение -- через CASE, хотя проще через SPLIT_PART
+SELECT
+  id,
+  name,
+  CASE WHEN characteristics like '%,%'            -- если в ячейки такой шаблон, т.е. более одного слова и разделение запятой
+  THEN left(characteristics,position(',' in characteristics)-1) -- то функция LEFT
+  ELSE characteristics END as characteristic          -- если нет -- берем ячейку как есть
+FROM monsters
+ORDER BY id
+______________________________________________________________________________________________________________________
+
+SELECT
+    CASE WHEN MOD(SUM(number1), 2) > 0 THEN MIN(number1) ELSE MAX(number1) END AS number1,
+    CASE WHEN MOD(SUM(number2), 2) > 0 THEN MIN(number2) ELSE MAX(number2) END AS number2
+FROM numbers AS output;
+
+_______________________________________________________________________________________________________________________
+
+SELECT
+    th.id, th.heads, bh.legs, th.arms, bh.tails,
+    CASE WHEN th.heads > th.arms OR bh.tails > bh.legs THEN 'BEAST'
+         ELSE 'WEIRDO'
+         END AS species
+FROM top_half as th
+JOIN bottom_half as bh ON th.id = bh.id
+ORDER BY species
+

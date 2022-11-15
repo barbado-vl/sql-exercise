@@ -1,0 +1,46 @@
+In your application, there is a section for adults only. You need to get a list of names and ages of users from the users table, who are 18 years old or older.
+users table schema: name, age
+
+Решение 
+select name, age from users where age >= 18;
+
+________________________________________________________________________________________________________________
+Select names, and countries of origin of all the travelers, excluding anyone from Canada, Mexico, or The US.
+travelers table schema; name, country.
+
+Решение:
+select name, country from travelers
+where country not in ('Canada', 'Mexico', 'USA')
+
+__________________________________________________________________________________________________________________
+Write a select statement to get a list of all students who haven't paid their tuition yet. The list should include all the data available about these students.
+students table schema: name (string), age (integer), semester (integer), mentor (string), tuition_received (Boolean).
+
+Решение 
+select * from students
+where not tuition_received;
+
+______________________________________________________________________________________________________________
+
+Решение
+SELECT * FROM students 
+WHERE ( quality1 = 'evil' and quality2 = 'cunning' ) 
+   OR ( ( quality1 = 'brave' or quality2 = 'brave') and (not quality1 = 'evil' or not quality2 = 'evil') )
+   OR ( quality1 in ('studious', 'intelligent') or quality2 in ('studious', 'intelligent') )
+   OR ( quality1 = 'hufflepuff' or quality2 = 'hufflepuff' )
+ORDER BY id;
+
+__________________________________________________________________________________________________________________
+
+SELECT id, name, stock
+FROM products AS results
+WHERE stock < 3 AND producent = 'CompanyA'
+ORDER BY id;
+
+________________________________________________________________________________________________________________
+
+
+
+
+
+

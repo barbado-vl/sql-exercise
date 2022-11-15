@@ -1,0 +1,230 @@
+
+_________________________________________________________________________________________________
+!!!!  !!!!!!   !!!!!          В каждом решении рзные функции приемы
+Цель этого Ката — показать, что вы умеете манипулировать строками (и, возможно, что вы можете широко использовать подзапросы). Вы будете использовать таблицу людей, но сосредоточитесь исключительно на столбце имени. Вам будет предоставлено полное имя, и вы должны вернуть имя в столбцах следующим образом.
+Примечание. Не забудьте удалить пробелы вокруг имен в результатах поиска.
+Примечание. Из-за мультикультурного контекста, если полное имя состоит более чем из 3 слов, первые 2 считаются именем.
+
+Решение -- вычесляем количество слов в name по числу пробелов используя математику и функциии LENGTH и REPLACE
+SELECT
+    CASE WHEN ( LENGTH(p.name) - LENGTH(REPLACE(p.name,' ','')) + 1 ) > 3
+           THEN CONCAT( SPLIT_PART(p.name, ' ', 1), ' ', SPLIT_PART(p.name, ' ', 2) )
+         WHEN ( LENGTH(p.name) - LENGTH(REPLACE(p.name,' ','')) + 1 ) > 4
+           THEN CONCAT( SPLIT_PART(p.name, ' ', 1), ' ', SPLIT_PART(p.name, ' ', 2), ' ', SPLIT_PART(p.name, ' ', 3))
+         ELSE SPLIT_PART(p.name, ' ', 1)
+    END as name,
+    ... as first_lastname,
+    ... as second_lastname
+
+FROM people as p
+
+Решение 2 -- SUBSTRING -- возвращает часть символьного, двоичного, текстового или графического выражения в SQL Server ( expression ,start , length )
+         -- и регулярные выражения
+select
+  substring(name, '^(.+)\s\S+\s\S+$') as name,
+  substring(name, '^.+\s(\S+)\s\S+$') as first_lastname,
+  substring(name, '^.+\s(\S+)$') as second_lastname
+from people
+
+Решение 3 -- string_to_array и array_to_string. 
+SELECT
+  array_to_string(name[1:len-2], ' ') AS name,
+  name[len-1]                         AS first_lastname,
+  name[len]                           AS second_lastname
+FROM (
+  SELECT
+    name,
+    array_length(name, 1) AS len
+  FROM (
+    SELECT
+      string_to_array(name, ' ') AS name
+    FROM people
+  ) arr
+) arr_and_len
+
+Решение 3 -- REGEXP_REPLACE -- заменяет все подстроки в str, которые соответствуют regexp, на rep -- regexp_replace(str, regexp, rep [, position] ) Важный нюанс -- без position меняет только один раз. Обычно указывают 'g'.
+          -- и какие-то регулярные выражения
+SELECT 
+  REGEXP_REPLACE(name, '(.*) (.+) (.+)', '\1') as name,
+  REGEXP_REPLACE(name, '(.*) (.+) (.+)', '\2') as first_lastname,
+  REGEXP_REPLACE(name, '(.*) (.+) (.+)', '\3') as second_lastname
+FROM people
+
+Решение 4 -- REVERSE-- возвращает строковое значение, где символы переставлены в обратном порядке справа налево.
+SELECT 
+  TRIM(concat(reverse(SPLIT_PART(reverse(name), ' ', 4)), ' ' , reverse(SPLIT_PART(reverse(name), ' ', 3)) )) AS name,
+  reverse(SPLIT_PART(reverse(name), ' ', 2)) AS first_lastname,
+  reverse(SPLIT_PART(reverse(name), ' ', 1)) AS second_lastname 
+FROM people
+
+
+
+
+
+_________________________________________________________________________________________________________________________________
+Write a select statement that takes name from person table and return "Hello, <name> how are you doing today?" results in a column named greeting
+[Make sure you type the exact thing I wrote or the program may not execute properly]
+
+Задача вернуть строку приветсвия, где вместо name будет имя, назвать все greeting
+
+Решение 1 -- используется символ конкатенации ||.
+select 'Hello, ' || name || ' how are you doing today?' as greeting from person
+
+Решение 2 -- конкатенация через функцию CONCAT.
+Select CONCAT('Hello, ',name ,' how are you doing today?') as greeting from person;
+
+Решение 3 -- функция REPLACE
+SELECT REPLACE(
+  'Hello, <name> how are you doing today?',
+  '<name>', name
+) as greeting FROM person;
+
+Решение 4 -- пишем свою функцию
+CREATE OR REPLACE FUNCTION greeting_func (t1 text) RETURNS text AS $$
+  SELECT * FROM FORMAT('Hello, %s how are you doing today?', t1);
+$$ LANGUAGE SQL;
+
+SELECT greeting_func(name) AS greeting
+FROM person
+
+___________________________________________________________________________________________________________________________ TRANSLATE / REGEXP_REPLACE / REPLACE
+Given a string of digits, you should replace any digit below 5 with '0' and any digit 5 and above with '1'. Return the resulting string.
+Write your SQL statement here: you are given a table 'fakebin' with column 'x', return a table with column 'x' and your result in a column named 'res'.
+
+Решение -- функция TRANSLATE
+SELECT x, TRANSLATE(x, '123456789', '000011111') AS res FROM fakebin
+
+Решение -- функция REGEXP_REPLACE -- заменяет все подстроки в str, которые соответствуют regexp, на rep -- regexp_replace(str, regexp, rep [, position] ). Важный нюанс -- без position меняет только один раз. Обычно указывают 'g'.
+SELECT x, REGEXP_REPLACE(REGEXP_REPLACE(x,'[0-4]','0','g'),'[5-9]','1','g') AS res FROM fakebin
+
+Решение -- функция REPLACE
+select x,
+replace(replace(replace(replace(replace(replace(replace(replace(replace(
+x, '1', '0'), '2', '0'), '3', '0'), '4', '0'), '5', '1'), '6', '1'),'7', '1'),'8', '1'),'9','1') as "res"
+
+--------------------------------------------------------------------------------------------------------
+
+Решение -- REGEXP_REPLACE
+select project, commits, contributors,
+  regexp_replace(address, '[0-9]', '!', 'g') as address
+from repositories
+
+Решение -- TRANSLATE
+SELECT project, commits, contributors, translate(address, '1234567890', '!!!!!!!!!!') AS address
+FROM repositories;
+------------------------------------------------------------------------------------------------------------
+Ваша задача состоит в том, чтобы отделить буквы и цифры от предоставленного адреса
+
+Решение -- TRANSLATE
+SELECT
+    project,
+    TRANSLATE(address, '1234567890', '') as letters,
+    TRANSLATE(address, 'abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ', '')as numbers
+FROM repositories
+
+Решение -- REGEXP_REPLACE  ... без 'g' не работает
+SELECT project,
+       regexp_replace(address, '[^A-Za-z]', '', 'g') AS letters,
+       regexp_replace(address, '[^0-9]', '', 'g') AS numbers
+FROM repositories;
+
+___________________________________________________________________________________________________________________________  LEFT / RIGHT / SUBSTRING
+For each row: Return first x characters of the project name where x = commits. Return last y characters of each address where y = contributors.
+
+Решение -- LEFT, RIGHT -- возвращает указанное число символов символьного выражения слева
+SELECT
+    LEFT ( project, commits::int ) as project,
+    RIGHT ( address, contributors::int ) as address
+FROM repositories;
+
+Решение -- SUBSTRING -- возвращает часть символьного, двоичного, текстового или графического выражения в SQL Server ( expression ,start , length ) .
+SELECT SUBSTRING(project, 0, commits+1) AS project
+    ,SUBSTRING(address, LENGTH(address) - contributors + 1) AS address
+  FROM repositories
+
+
+Задача -- удалить символ в начале строки и в конце строки
+Решение1:
+SELECT s,
+    LEFT( RIGHT(s, LENGTH(s)-1), LENGTH(s)-2 ) AS res
+FROM removechar;
+
+Решение2:
+SELECT s, SUBSTRING(s, 2, LENGTH(s) - 2) AS res 
+FROM removechar
+____________________________________________________________________________________________________________________________ POSITION
+
+Решение -- POSITION возвращает позицию первого вхождения подстроки в строку. Если подстрока не найдена в исходной строке, эта функция возвращает 0.
+Эта функция выполняет поиск без учета регистра.
+SELECT id, name,
+   POSITION( ',' IN characteristics ) as  comma
+FROM monsters
+ORDER BY comma;
+
+________________________________________________________________________________________________________________________________  REGEXP_SPLIT_TO_TABLE
+
+Решение -- REGEXP_SPLIT_TO_TABLE разделяет строку, используя в качестве разделителя регулярное выражение POSIX и выдавая набор результатов в отдельной колонке
+SELECT
+  REGEXP_SPLIT_TO_TABLE(text, '[aeiou]') AS results
+FROM random_string
+
+__________________________________________________________________________________________________________________________________ LENGTH / bit_length
+
+Решение -- LENGTH -- возвращает количество символов указанного строкового выражения, исключая конечные пробелы.
+SELECT
+    LENGTH( name ) as id,
+    LENGTH( legs::text ) as name,
+    LENGTH( arms::text )as legs,
+    LENGTH( characteristics )as arms,
+    LENGTH( id::text ) as characteristics
+FROM monsters;
+-----------------------------------------------------------------------------------------------------
+Решение -- bit_length -- возвращает длину строковых данных в битах или число битов двоичных данных.
+SELECT
+   bit_length(name) + length(race) as calculation
+FROM demographics;
+-------------------------------------------------------------------------------------------------------
+
+SELECT 
+    bit_length(number1::varchar)/8 AS octnum1,
+    bit_length(number2::varchar)/8 AS octnum2,
+    bit_length(number3::varchar)/8 AS octnum3,
+    bit_length(number4::varchar)/8 AS octnum4,
+    bit_length(number5::varchar)/8 AS octnum5
+FROM numbers AS output;
+
+____________________________________________________________________________________________________________________________________ ASCII
+
+Решение ASCII -- возвращает код ASCII первого символа указанного символьного выражения.
+SELECT id, ASCII(name) as name, birthday, ASCII(race) as race FROM demographics
+____________________________________________________________________________________________________________________________________ UPPER
+
+Решение -- UPPER -- возвращает символьное выражение, в котором символы нижнего регистра преобразованы в символы верхнего регистра.
+SELECT s,
+   UPPER(s) AS res
+FROM makeuppercase;
+_______________________________________________________________________________________________________________________________________ SPLIT_PART
+
+Решение -- SPLIT_PART -- функция разделения строк PostgreSQL принимает строку для разделения и используемый разделитель. Кроме того, он возвращает указанную часть строки.
+SELECT id, name,
+    SPLIT_PART(characteristics, ',', 1) AS characteristic
+FROM monsters AS output
+ORDER BY id;
+_______________________________________________________________________________________________________________________________________ LPAD / RPAD
+
+Решение -- LPAD / RPAD добавляет слева/справа от строки str некоторое количество символов, которые определены в параметре pad. Количество добавляемых символов вычисляется по формуле length - LENGTH(str). Если параметр length меньше длины строки str, то эта строка усекается до length символов.
+SELECT
+     RPAD( md5, LENGTH(sha256), '1' ) as md5,
+     LPAD( sha1, LENGTH(sha256), '0' ) as sha1,
+     sha256
+FROM encryption AS output;
+__________________________________________________________________________________________________________________________________________ CONCAT / REPEAT
+Problem is the table looks so unbalanced - the sha256 column contains much longer strings. You need to balance things up. Add '1' to the end of the md5 addresses as many times as you need to to make them the same length as those in the sha256 column. Add '0' to the beginning of the sha1 values to achieve the same result.
+
+SELECT 
+  CONCAT(md5, REPEAT('1', (LENGTH(sha256) - LENGTH(md5)))) as md5,
+  CONCAT(REPEAT('0', (LENGTH(sha256) - LENGTH(sha1))), sha1) as sha1,
+  sha256
+FROM encryption
+
+

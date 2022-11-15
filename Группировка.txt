@@ -1,0 +1,174 @@
+Простые GROUP BY и HAVING в файле "all in one".
+
+__________________________________________________________________________________________________________ UNION ALL
+SELECT 
+   'US' as location,
+   id,
+   name,
+   price,
+   card_name,
+   card_number,
+   transaction_date
+FROM ussales
+WHERE price > 50.00
+UNION ALL
+SELECT 
+   'EU' as location,
+   id,
+   name,
+   price,
+   card_name,
+   card_number,
+   transaction_date
+FROM eusales
+WHERE price > 50.00
+ORDER BY location DESC, id
+
+
+
+__________________________________________________________________________________________________________ ROLLUP
+Имея информацию о продажах в магазине, рассчитайте общую выручку за каждый день, месяц, год и товар.
+Основная задача -- сгруппировать данные для отображения колонки total, где будет общее по имени товара, общее по дате, по году, по месяцу и дню.
+
+Решение 1 -- расширения группировки.-------------------------------------------------
+select
+  name as product_name,
+  extract(year from date)::int as year,
+  extract(month from date)::int as month,
+  extract(day from date)::int as day,
+  sum(price * count) as total
+from sales_details sd
+join sales s on sd.sale_id = s.id
+join products p on sd.product_id = p.id
+group by name, rollup(year, month, day)
+order by product_name, year, month, day
+
+Вариант
+group by grouping sets (
+    (product_name, year, month, day),
+    (product_name, year, month),
+    (product_name, year),
+    (product_name)
+  )
+
+Решение 2 -- UNION и/или INTO------------------------------------------------------- UNION
+SELECT p.name as product_name
+     , date_part('year', s.date) as year
+     , date_part('month', s.date) as month
+     , date_part('day', s.date) as day
+     , (sum(count) * sum(price)) as total
+INTO TABLE temp
+ FROM sales_details as sd
+  full join sales as s
+    on sd.sale_id = s.id
+ full join products as p
+    on sd.product_id = p.id
+group 
+    by product_name
+     , year
+     , month
+     , day;
+
+
+select * 
+from temp
+
+union all
+
+select product_name
+     , year
+     , month
+     , null as day
+     , sum(total) as total
+from temp
+group 
+    by product_name
+     , year
+     , month
+     
+union all
+
+select product_name
+     , year
+     , null as month
+     , null as day
+     , sum(total) as total
+from temp
+group 
+    by product_name
+     , year
+     
+union all
+
+select product_name
+     , null as year
+     , null as month
+     , null as day
+     , sum(total) as total
+from temp
+group 
+    by product_name
+     
+order 
+    by product_name
+     , year
+     , month
+     , day;
+
+Вариант-----------------------       UNION
+WITH day_data as (SELECT name as product_name,
+       extract(year from date)::integer as year,
+       extract(month from date)::integer as month,
+       extract(day from date)::integer as day,
+       sum(price * count) as total
+FROM sales_details LEFT JOIN products
+ON products.id = sales_details.product_id
+LEFT JOIN sales
+ON sales.id = sales_details.sale_id
+GROUP BY (product_name, year, month, day)),
+
+month_data as (SELECT name as product_name,
+       extract(year from date)::integer as year,
+       extract(month from date)::integer as month,
+       NULL::integer as day,
+       sum(price * count) as total
+       FROM sales_details LEFT JOIN products
+       ON products.id = sales_details.product_id
+       LEFT JOIN sales
+       ON sales.id = sales_details.sale_id
+       GROUP BY (product_name, year, month)),
+
+year_data as (SELECT name as product_name,
+       extract(year from date)::integer as year,
+       NULL::integer as month,
+       NULL::integer as day,
+       sum(price * count) as total
+       FROM sales_details LEFT JOIN products
+       ON products.id = sales_details.product_id
+       LEFT JOIN sales
+       ON sales.id = sales_details.sale_id
+       GROUP BY (product_name, year)),
+
+totals as (SELECT name as product_name,
+       NULL::integer as year,
+       NULL::integer as month,
+       NULL::integer as day,
+       sum(price * count) as total
+       FROM sales_details LEFT JOIN products
+       ON products.id = sales_details.product_id
+       LEFT JOIN sales
+       ON sales.id = sales_details.sale_id
+       GROUP BY (product_name))
+
+SELECT *
+FROM day_data
+UNION
+SELECT *
+FROM month_data
+UNION
+SELECT *
+FROM year_data
+UNION
+SELECT *
+FROM totals
+ORDER BY product_name, year, month, day;
